@@ -28,3 +28,16 @@ if time < 20:
     print("The lesson is still going.")
 elif time >= 20:
     print("The lesson should have ended.")
+
+
+print()  # Blank line
+# lists
+list = ['kiwi', 'peach', 'banana', 'potato']
+
+print(f"List: {list[1]}") # Specific item in list
+print(f"List: {list[0]}") # First item is always 0
+print(f"List: {list[-1]}") # Last item is always -1
+print(f"List: {list[1:3]}") # Items from index 1 to 2 (3 is not included)
+print(f"Length of string: {len(' 1')}") # Length of string characters
+print(f"Length of list: {len(list)}") # Length of list items
+print() # Blank line
