@@ -5,6 +5,8 @@ birth_day = int(input("Enter your birth day: "))  # Input from user as an intege
 # Automatically calculate the current date
 from datetime import date # Getting the current date; importing date from datetime module
 current_date = date.today() # Date today
+print() # Blank line for better readability
+print(f"Current date: {current_date}") # Displaying the current date
 
 # Calculating age
 age = current_date.year - birth_year # Age is the difference between current year and birth year
