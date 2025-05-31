@@ -41,3 +41,13 @@ print(f"List: {list[1:3]}") # Items from index 1 to 2 (3 is not included)
 print(f"Length of string: {len(' 1')}") # Length of string characters
 print(f"Length of list: {len(list)}") # Length of list items
 print() # Blank line
+
+
+# Scope
+x = 10 # Global variable
+def my_function():
+    x = 5  # Local variable
+    print(f"Local x: {x}")  # Will print local variable
+    print(f"Global x: {globals()['x']}")  # Will print global variable
+my_function()
+print()  # Blank line
