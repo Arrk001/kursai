@@ -20,9 +20,9 @@ SYSTEM = (
 def ask_llm(question):
     try:
         response = client.chat.completions.create(
-            model=model_name, # Use the defined model_name
-            temperature=0.7, # Set the temperature based on task requirements
-            messages=[
+            model = model_name, # Use the defined model_name
+            temperature = 0.7, # Set the temperature based on task requirements
+            messages = [
                 {"role": "system", "content": SYSTEM},
                 {"role": "user", "content": question}
             ]
