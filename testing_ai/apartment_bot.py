@@ -27,17 +27,17 @@ def ask_llm(question):
                 {"role": "user", "content": question}
             ]
         )
-        return response.choices[0].message.content
+        return response.choices[0].message.content # Return the content of the first choice from the response
     except Exception as e:
         return f"API Error: {e}"
 
-# 🧾 Main function to handle input and route logic
+# 🧾 Function to handle input and route logic
 def main():
     question = input("Ask your question: ").strip().lower()
 
-    if any(kw in question for kw in KW):
-        answer = ask_llm(question)
-        print(answer)
+    if any(kw in question for kw in KW): # Check if the question contains any of the keywords
+        answer = ask_llm(question) # Answer gotten from the ask_llm function
+        print(answer) # Print the answer to the user
     else:
         print("Sorry, I don't have knowledge on that.")
 
