@@ -31,7 +31,7 @@ def ask_llm(question):
     except Exception as e:
         return f"API Error: {e}"
 
-# 🧾 Function to handle input and route logic
+# Function to handle input and route logic
 def main():
     question = input("Ask your question: ").strip().lower()
 
