@@ -2,7 +2,7 @@ import os # Importing OS for environment variable handling
 from dotenv import load_dotenv # Importing load_dotenv to load environment variables from a .env file
 from openai import OpenAI # Importing OpenAI client for API interactions
 load_dotenv() # Load environment variables from .env file
-token = os.environ.get("GITHUB_TOKEN") # Retrieve the GitHub token from environment variables
+token = os.getenv("GITHUB_TOKEN") # Retrieve the GitHub token from environment variables
 model_name = "openai/gpt-4.1" # Define the model name to be used for the API call
 github_models_base_url = "https://models.github.ai/inference" # Define the base URL for the GitHub models API
 client = OpenAI(
