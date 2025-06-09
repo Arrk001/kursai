@@ -3,11 +3,11 @@ from dotenv import load_dotenv # Importing load_dotenv to load environment varia
 from openai import OpenAI # Importing OpenAI client for API interactions
 load_dotenv() # Load environment variables from .env file
 token = os.getenv("GITHUB_TOKEN") # Retrieve the GitHub token from environment variables
-model_name = "openai/gpt-4.1" # Define the model name to be used for the API call
-github_models_base_url = "https://models.github.ai/inference" # Define the base URL for the GitHub models API
+model = "openai/gpt-4.1" # Define the model name to be used for the API call
+endpoint = "https://models.github.ai/inference" # Define the base URL for the GitHub models API
 client = OpenAI(
     api_key=token,
-    base_url=github_models_base_url
+    base_url=endpoint
 )
 KW = ["apartment", "flat", "room", "renovation", "furniture", "storage", "decor"]
 SYSTEM = (
@@ -20,7 +20,7 @@ SYSTEM = (
 def ask_llm(question):
     try:
         response = client.chat.completions.create(
-            model = model_name, # Use the defined model_name
+            model = model, # Use the defined model_name
             temperature = 0.7, # Set the temperature based on task requirements
             messages = [
                 {"role": "system", "content": SYSTEM},
