@@ -93,4 +93,4 @@ while True:
         # If no tool was called, the initial response is the direct answer
         chatbot_response = response.choices[0].message.content
 
-    print(f"[green]AI: [/green] {chatbot_response}")
+    print(f"[bright_magenta]Weatherbot: [/bright_magenta] {chatbot_response}")

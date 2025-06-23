@@ -45,16 +45,6 @@ get_weather_definition = {
     }
 }
 
-import requests
-from rich import print
-from dotenv import load_dotenv
-import os
-import json # Make sure json is imported if you're using it for debugging prints
-
-load_dotenv()
-WEATHER_API_KEY = os.getenv("WKEY")
-
-# (Keep your existing get_weather function and get_weather_definition here)
 
 def forecast(city: str, days: int):
     parameters = {
