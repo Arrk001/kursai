@@ -27,17 +27,31 @@ h1 {
     width: 100%;
 }
 
-/* Border around individual chat messages */
+/* Base style for individual chat messages (apply common properties) */
 .stChatMessage {
-    border: 1px solid #ddd; /* Light grey border */
     border-radius: 5px; /* Slightly rounded corners */
     padding: 10px; /* Padding inside the border */
     margin-bottom: 10px; /* Space between message boxes */
+    border-width: 1px; /* Ensure border width is set */
+    border-style: solid; /* Ensure border style is set */
 }
 
+/* Lime green border for odd messages (1st, 3rd, 5th, etc.) */
+/* Target the stChatMessage within the odd stLayoutWrapper */
+div[data-testid="stLayoutWrapper"]:nth-child(odd) .stChatMessage {
+    border-color: limegreen;
+}
+
+/* Light cyan border for even messages (2nd, 4th, 6th, etc.) */
+/* Target the stChatMessage within the even stLayoutWrapper */
+div[data-testid="stLayoutWrapper"]:nth-child(even) .stChatMessage {
+    border-color: red;
+}
+
+
 /* Single border around the entire main content area (where all messages are) */
-.main .block-container {
-    border: 1px solid #ccc;
+div[data-testid="stMainBlockContainer"] {
+    border: 5px solid yellow !important; /* Main content border */
     border-radius: 10px;
     padding: 20px;
     margin-top: 20px;
