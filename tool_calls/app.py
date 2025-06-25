@@ -15,9 +15,66 @@ MODEL = "openai/gpt-4.1-mini"
 # Set up OpenAI client
 client = OpenAI(base_url=PLATFORM_ENDPOINT, api_key=API_KEY)
 
+# --- CUSTOM CSS FOR CENTERING TITLE AND BORDERS ---
+st.markdown("""
+<style>
+/* Centering the H1 title */
+h1 {
+    text-align: center;
+    width: 100%;
+}
+
+/* Specific targeting for Streamlit's H1 container if the general h1 doesn't work */
+/* You might need to inspect your page to get the exact class name for h1 */
+/* Example: .st-emotion-cache-xyzxyz { text-align: center; width: 100%; } */
+
+/* Border around individual chat messages */
+.stChatMessage {
+    border: 1px solid #ddd; /* Light grey border */
+    border-radius: 5px; /* Slightly rounded corners */
+    padding: 10px; /* Padding inside the border */
+    margin-bottom: 10px; /* Space between message boxes */
+}
+
+/* Single border around the entire main content area (where all messages are) */
+.main .block-container {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+}
+</style>
+""", unsafe_allow_html=True)
+# --- END CUSTOM CSS ---
+
+# Now display the title
+st.title("☀️ Weatherbot 🌧️")
 # Set up Streamlit
 st.set_page_config(page_title="Weatherbot", layout="centered")
-st.title("☀️ Weatherbot 🌧️")
+
+# Custom CSS to add a border around the main content area (where messages are displayed)
+st.markdown("""
+<style>
+.stChatMessage {
+    border: 1px solid #ddd; /* Light grey border */
+    border-radius: 5px; /* Slightly rounded corners */
+    padding: 10px; /* Padding inside the border */
+    margin-bottom: 10px; /* Space between message boxes */
+}
+/* You can target the entire main content area if you want a single border around all messages */
+.main .block-container {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # Initialize chat history and system prompt
 if "messages" not in st.session_state:
