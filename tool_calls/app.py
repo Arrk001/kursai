@@ -16,8 +16,8 @@ MODEL = "openai/gpt-4.1-mini"
 client = OpenAI(base_url=PLATFORM_ENDPOINT, api_key=API_KEY)
 
 # Set up Streamlit
-st.set_page_config(page_title="Weather Chatbot", layout="centered")
-st.title("☀️ Weather Chatbot")
+st.set_page_config(page_title="Weatherbot", layout="centered")
+st.title("☀️ Weatherbot 🌧️")
 
 # Initialize chat history and system prompt
 if "messages" not in st.session_state:
@@ -26,9 +26,15 @@ if "messages" not in st.session_state:
     ]
 
 # Show previous messages
-for msg in st.session_state.messages[1:]:  # skip system prompt
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+for msg in st.session_state.messages:
+    # Skip system prompt and tool messages from being displayed in the chat window
+    if msg["role"] == "system" or msg["role"] == "tool":
+        continue
+
+    # Only display messages that have a 'content' key (user and final assistant replies)
+    if "content" in msg:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
 # Input from user
 user_input = st.chat_input("Ask about the weather...")
@@ -67,17 +73,23 @@ if user_input:
         # Handle tool response
         if "error" in tool_response:
             bot_reply = f"⚠️ Error: {tool_response['error']}"
+            # If there's an error, append it as an assistant message directly
+            with st.chat_message("assistant"):
+                st.markdown(bot_reply)
+            st.session_state.messages.append({"role": "assistant", "content": bot_reply})
         else:
+            # Append the assistant's tool call message (no content for display)
             st.session_state.messages.append({
                 "role": "assistant", "tool_calls": [tool_call]
             })
+            # Append the tool's response message (content for LLM, not for display)
             st.session_state.messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
                 "content": json.dumps(tool_response)
             })
 
-            # Second API call
+            # Second API call to get the human-readable response
             second_response = client.chat.completions.create(
                 model=MODEL,
                 messages=st.session_state.messages,
@@ -85,11 +97,14 @@ if user_input:
                 tool_choice="auto"
             )
             bot_reply = second_response.choices[0].message.content
+            # Show and store the final bot reply from the second API call
+            with st.chat_message("assistant"):
+                st.markdown(bot_reply)
+            st.session_state.messages.append({"role": "assistant", "content": bot_reply})
     else:
         # No tool call; respond directly
         bot_reply = response.choices[0].message.content
-
-    # Show and store bot reply
-    with st.chat_message("assistant"):
-        st.markdown(bot_reply)
-    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+        # Show and store bot reply
+        with st.chat_message("assistant"):
+            st.markdown(bot_reply)
+        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
