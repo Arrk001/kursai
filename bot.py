@@ -8,7 +8,6 @@ import google.generativeai as genai
 import json
 import base64
 
-
 # --- Configuration ---
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_TOKEN")
@@ -31,7 +30,6 @@ if "invoice_data" not in st.session_state:
     st.session_state.invoice_data = None
 
 # --- Helper Functions ---
-
 def convert_pdf_to_images(file_path):
     """
     Converts each page of a PDF file into a PIL Image object.
