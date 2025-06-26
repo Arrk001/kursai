@@ -16,14 +16,16 @@ if not GOOGLE_API_KEY:
     st.stop()
 
 genai.configure(api_key=GOOGLE_API_KEY)
-MODEL_NAME = "gemini-2.5-flash"  # Using gemini-2.5-flash for multimodal capabilities
+MODEL_NAME = "gemini-2.5-flash" # Using gemini-2.5-flash for multimodal capabilities
 
 # --- Streamlit UI Setup ---
 st.set_page_config(page_title="Invoice AI Assistant", layout="wide")
 st.title("📄 Invoice AI Assistant")
 st.markdown("Upload your invoice file (PDF, JPG, PNG) and let AI extract the details as JSON!")
 
-# --- Initialize session state for invoice data ---
+# --- Initialize session state for chat history ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 if "invoice_data" not in st.session_state:
     st.session_state.invoice_data = None
 
@@ -38,7 +40,7 @@ def convert_pdf_to_images(file_path):
     for page_num in range(len(document)):
         page = document.load_page(page_num)
         pix = page.get_pixmap()
-        img_bytes = pix.tobytes("png")  # Convert to PNG bytes
+        img_bytes = pix.tobytes("png") # Convert to PNG bytes
         image = Image.open(io.BytesIO(img_bytes))
         images.append(image)
     return images
@@ -61,7 +63,7 @@ def get_gemini_response(prompt_parts, image_parts=None):
             contents = image_parts + [{"text": prompt_parts[0]}]
 
         response = model.generate_content(contents,
-                                          request_options={"timeout": 600})  # Increase timeout for large files/complex requests
+                                          request_options={"timeout": 600}) # Increase timeout for large files/complex requests
         return response.text
     except Exception as e:
         st.error(f"Error calling Gemini API: {e}")
@@ -130,13 +132,13 @@ def extract_invoice_details(image_data):
             if json_start != -1 and json_end != -1 and json_end > json_start:
                 json_string = response_text[json_start + len("```json"):json_end].strip()
             else:
-                json_string = response_text.strip()  # Assume it's just JSON if no tags
+                json_string = response_text.strip() # Assume it's just JSON if no tags
 
             invoice_json = json.loads(json_string)
             return invoice_json
         except json.JSONDecodeError as e:
             st.error(f"Failed to parse JSON from AI response: {e}")
-            st.code(response_text, language="text")  # Show raw response for debugging
+            st.code(response_text, language="text") # Show raw response for debugging
             return None
     return None
 
@@ -151,7 +153,7 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
     st.success(f"File uploaded: {uploaded_file.name}")
     file_extension = uploaded_file.name.split(".")[-1].lower()
-
+    
     invoice_images = []
     if file_extension == "pdf":
         try:
@@ -173,9 +175,6 @@ if uploaded_file is not None:
             st.session_state.invoice_data = invoice_details
             st.subheader("Extracted Invoice Details (JSON):")
             st.json(invoice_details)
-            # Print JSON to console (VSCode terminal)
-            print("Extracted Invoice JSON:")
-            print(json.dumps(invoice_details, indent=2))
 
             # Display a summary for readability
             st.subheader("Invoice Summary:")
@@ -186,8 +185,42 @@ if uploaded_file is not None:
                 st.write(f"**Vendor:** {invoice_details['vendor_info'].get('name', 'N/A')}")
             if invoice_details.get('customer_info'):
                 st.write(f"**Customer:** {invoice_details['customer_info'].get('name', 'N/A')}")
-
+            
             if invoice_details.get('items'):
                 st.subheader("Line Items:")
                 for item in invoice_details['items']:
                     st.write(f"- {item.get('description', 'N/A')}: Qty {item.get('quantity', 'N/A')} @ {item.get('unit_price', 'N/A')} = {item.get('line_total', 'N/A')}")
+
+
+# --- Chatbot Section ---
+st.divider()
+st.subheader("Ask me anything about the invoice (or generally)! 👇")
+
+# Display chat messages from history
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Chat input
+if prompt := st.chat_input("What would you like to know?"):
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Prepare context for the AI
+    ai_prompt_parts = [prompt]
+    if st.session_state.invoice_data:
+        # Provide invoice data as context for the chatbot
+        ai_prompt_parts.insert(0, f"Here is the previously extracted invoice data (JSON): {json.dumps(st.session_state.invoice_data)}\n\n")
+
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            # Call Gemini model without image for chat (unless a new file is uploaded)
+            full_response = get_gemini_response(ai_prompt_parts)
+            if full_response:
+                st.markdown(full_response)
+                # Add assistant response to chat history
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+            else:
+                st.warning("Could not get a response from the AI.")
