@@ -4,9 +4,9 @@ import os
 import io
 from PIL import Image
 import fitz  # PyMuPDF
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import json
-import base64
 
 # --- Configuration ---
 load_dotenv()
@@ -15,7 +15,7 @@ if not GOOGLE_API_KEY:
     st.error("GOOGLE_API_TOKEN environment variable not found. Please set it.")
     st.stop()
 
-genai.configure(api_key=GOOGLE_API_KEY)
+client = genai.Client(api_key=GOOGLE_API_KEY)
 MODEL_NAME = "gemini-2.5-flash"  # Using gemini-2.5-flash for multimodal capabilities
 
 # --- Streamlit UI Setup ---
@@ -43,29 +43,11 @@ def convert_pdf_to_images(file_path):
         images.append(image)
     return images
 
-def pil_image_to_base64(image):
-    """Converts a PIL Image to a base64 encoded string."""
+def pil_image_to_bytes(image, format="PNG"):
+    """Converts a PIL Image to bytes."""
     buffered = io.BytesIO()
-    image.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-def get_gemini_response(prompt_parts, image_parts=None):
-    """
-    Sends prompt and optional images to Gemini 2.5 Flash model and returns the response.
-    """
-    try:
-        model = genai.GenerativeModel(MODEL_NAME)
-        contents = prompt_parts
-        if image_parts:
-            # Add image parts before the main text prompt
-            contents = image_parts + [{"text": prompt_parts[0]}]
-
-        response = model.generate_content(contents,
-                                          request_options={"timeout": 600})  # Increase timeout for large files/complex requests
-        return response.text
-    except Exception as e:
-        st.error(f"Error calling Gemini API: {e}")
-        return None
+    image.save(buffered, format=format)
+    return buffered.getvalue()
 
 def extract_invoice_details(image_data):
     """
@@ -112,31 +94,33 @@ def extract_invoice_details(image_data):
     ```
     Ensure the output is valid JSON, enclosed only within the ```json ... ``` block.
     """
-    image_parts = []
+    parts = []
     for img in image_data:
-        image_parts.append({
-            "mime_type": "image/png",
-            "data": pil_image_to_base64(img)
-        })
+        img_bytes = pil_image_to_bytes(img)
+        parts.append(types.Part.from_bytes(data=img_bytes, mime_type="image/png"))
+    contents = parts + [prompt]
 
     with st.spinner("Analyzing invoice... This may take a moment."):
-        response_text = get_gemini_response([prompt], image_parts=image_parts)
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=contents
+        )
 
-    if response_text:
+    if response.text:
         try:
             # Extract JSON string from the response (it might be wrapped in ```json tags)
-            json_start = response_text.find("```json")
-            json_end = response_text.rfind("```")
+            json_start = response.text.find("```json")
+            json_end = response.text.rfind("```")
             if json_start != -1 and json_end != -1 and json_end > json_start:
-                json_string = response_text[json_start + len("```json"):json_end].strip()
+                json_string = response.text[json_start + len("```json"):json_end].strip()
             else:
-                json_string = response_text.strip()  # Assume it's just JSON if no tags
+                json_string = response.text.strip()  # Assume it's just JSON if no tags
 
             invoice_json = json.loads(json_string)
             return invoice_json
         except json.JSONDecodeError as e:
             st.error(f"Failed to parse JSON from AI response: {e}")
-            st.code(response_text, language="text")  # Show raw response for debugging
+            st.code(response.text, language="text")  # Show raw response for debugging
             return None
     return None
 
@@ -190,4 +174,4 @@ if uploaded_file is not None:
             if invoice_details.get('items'):
                 st.subheader("Line Items:")
                 for item in invoice_details['items']:
-                    st.write(f"- {item.get('description', 'N/A')}: Qty {item.get('quantity', 'N/A')} @ {item.get('unit_price', 'N/A')} = {item.get('line_total', 'N/A')}")
+                    st.write(f"- {item.get('description', 'N/A')}: Qty {item.get('quantity', 'N/A')} @ {item.get('unit_price', 'N/A')} = {item.get('line_total', 'N/A')}") 
