@@ -69,7 +69,6 @@ if st.button("Check Title (AI Suggestion)") and st.session_state['user_title_for
     st.session_state['clarified_title'] = clarified
     st.success(f"AI Suggests: {clarified}")
 
-# --- IMPORTANT CHANGE HERE ---
 # Reload DataFrame if a refresh is triggered (after adding/updating)
 if st.session_state.get('refresh_watchlist'):
     df = db_utils.read_watchlist()
