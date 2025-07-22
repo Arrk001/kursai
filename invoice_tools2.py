@@ -7,6 +7,8 @@ import fitz  # PyMuPDF
 from google import genai
 from google.genai import types
 import json
+from rich import print
+
 
 # --- Configuration ---
 load_dotenv()
@@ -86,6 +88,7 @@ def extract_invoice_details(image_data):
       "total_discount": "NUMBER",  // Discount total (amount or percentage if specified),
       "currency": "STRING",
       "payment_terms": "STRING",
+      "payment_method": "STRING",
       "notes": "STRING"
     }
     ```
@@ -213,6 +216,7 @@ def display_invoice_summary(invoice_details):
     st.write(f"**Invoice Number:** {invoice_details.get('invoice_number', 'N/A')}")
     st.write(f"**Invoice Date:** {invoice_details.get('invoice_date', 'N/A')}")
     st.write(f"**Total Amount:** {invoice_details.get('currency', '')} {invoice_details.get('total_amount', 'N/A')}")
+    st.write(f"**Payment Method:** {invoice_details.get('payment_method', 'N/A')}")
     
     if invoice_details.get('vendor_info'):
         st.write(f"**Vendor:** {invoice_details['vendor_info'].get('name', 'N/A')}")

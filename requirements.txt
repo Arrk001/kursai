@@ -3,3 +3,7 @@ chromadb
 openai
 tiktoken
 python-dotenv
+streamlit
+pandas
+google-generativeai
+requests

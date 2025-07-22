@@ -7,6 +7,8 @@ import fitz  # PyMuPDF
 from google import genai
 from google.genai import types
 import json
+from rich import print
+
 
 # --- Configuration ---
 load_dotenv()
@@ -42,54 +44,73 @@ def pil_image_to_bytes(image, format="PNG"):
     image.save(buffered, format=format)
     return buffered.getvalue()
 
+def try_repair_json(json_string):
+    """
+    Attempt to repair common LLM JSON issues: trailing commas, missing braces, and random tokens.
+    Returns a string that is more likely to be valid JSON.
+    """
+    import re
+    # Remove trailing commas before closing brackets/braces
+    json_string = re.sub(r',\s*([}\]])', r'\1', json_string)
+    # Remove any double commas
+    json_string = re.sub(r',\s*,', ',', json_string)
+    # Remove any stray commas at the end of arrays/objects
+    json_string = re.sub(r',\s*([}\]])', r'\1', json_string)
+    # Remove random non-JSON tokens between objects in arrays (e.g., hallucinated words)
+    # This will remove any word (letters only) that appears between a number/null/true/false and a closing brace
+    json_string = re.sub(r'(\d+\.?\d*|null|true|false)\s+([a-zA-Z_]+)\s*([}\]])', r'\1\3', json_string)
+    # Remove any word (letters only) that appears before a closing brace in an object
+    json_string = re.sub(r'([}\]])\s+[a-zA-Z_]+\s*([}\]])', r'\1\2', json_string)
+    return json_string
+
 def extract_invoice_details(image_data):
     """
-    Prompts the Gemini model to extract invoice details and format them as JSON.
+    Prompts the Gemini model to extract invoice details and format them as JSON using the Lithuanian schema.
     """
     client = get_google_client()
     
     prompt = """
-    Analyze the provided invoice image(s). Extract the following details and provide them in a JSON object.
-    Be precise with numerical values and dates. If a field is not found, use `null`.
+    Analizuok pateiktą sąskaitos faktūros atvaizdą (-us). Ištrauk visą informaciją pagal šią JSON schemą. Jei laukas nerastas, naudok `null`.
 
-    JSON Structure:
+    JSON struktūra:
     ```json
     {
-      "invoice_number": "STRING",
-      "invoice_date": "YYYY-MM-DD",
-      "due_date": "YYYY-MM-DD",
-      "vendor_info": {
+      "saskaitos_numeris": "STRING",
+      "data": "YYYY-MM-DD",
+      "pardavejas": {
         "name": "STRING",
-        "address": "STRING",
-        "phone": "STRING",
-        "email": "STRING",
-        "website": "STRING"
-      },
-      "customer_info": {
-        "name": "STRING",
+        "asmens_kodas": "STRING",
+        "individualios_veiklos_pazymejimo_numeris": "STRING",
         "address": "STRING",
         "phone": "STRING",
         "email": "STRING"
       },
-      "items": [
+      "pirkejas": {
+        "name": "STRING",
+        "asmens_kodas": "STRING",
+        "individualios_veiklos_pazymejimo_numeris": "STRING",
+        "address": "STRING",
+        "phone": "STRING",
+        "email": "STRING"
+      },
+      "paslaugos": [
         {
           "description": "STRING",
           "quantity": "NUMBER",
-          "unit_price": "NUMBER",
-          "discount": "NUMBER",  // Discount per item (amount or percentage if specified),
-          "line_total": "NUMBER"
+          "unit": "STRING",
+          "price_per_unit": "NUMBER",
+          "total": "NUMBER"
         }
       ],
-      "subtotal": "NUMBER",
-      "tax_amount": "NUMBER",
-      "total_amount": "NUMBER",
-      "total_discount": "NUMBER",  // Discount total (amount or percentage if specified),
-      "currency": "STRING",
-      "payment_terms": "STRING",
-      "notes": "STRING"
+      "bendra_suma": "NUMBER",
+      "pvm": "NUMBER",
+      "suma_zodziais": "STRING",
+      "apmokejimo_budas": "STRING",
+      "apmokejimo_terminas": "STRING",
+      "parasas": "STRING"
     }
     ```
-    Ensure the output is valid JSON, enclosed only within the ```json ... ``` block.
+    Atsakyk TIK su JSON, be papildomų paaiškinimų.
     """
     parts = []
     for img in image_data:
@@ -97,7 +118,7 @@ def extract_invoice_details(image_data):
         parts.append(types.Part.from_bytes(data=img_bytes, mime_type="image/png"))
     contents = parts + [prompt]
 
-    with st.spinner("Analyzing invoice... This may take a moment."):
+    with st.spinner("Analizuojama sąskaita... Palaukite."):
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=contents
@@ -105,19 +126,21 @@ def extract_invoice_details(image_data):
 
     if response.text:
         try:
-            # Extract JSON string from the response (it might be wrapped in ```json tags)
             json_start = response.text.find("```json")
             json_end = response.text.rfind("```")
             if json_start != -1 and json_end != -1 and json_end > json_start:
                 json_string = response.text[json_start + len("```json"):json_end].strip()
             else:
-                json_string = response.text.strip()  # Assume it's just JSON if no tags
-
-            invoice_json = json.loads(json_string)
+                json_string = response.text.strip()
+            try:
+                invoice_json = json.loads(json_string)
+            except json.JSONDecodeError:
+                repaired = try_repair_json(json_string)
+                invoice_json = json.loads(repaired)
             return invoice_json
         except json.JSONDecodeError as e:
             st.error(f"Failed to parse JSON from AI response: {e}")
-            st.code(response.text, language="text")  # Show raw response for debugging
+            st.code(response.text, language="text")
             return None
     return None
 
@@ -207,26 +230,27 @@ def process_multiple_files(uploaded_files):
 
 def display_invoice_summary(invoice_details):
     """
-    Display a formatted summary of the extracted invoice details.
+    Display a formatted summary of the extracted invoice details (Lithuanian schema).
     """
-    st.subheader("Invoice Summary:")
-    st.write(f"**Invoice Number:** {invoice_details.get('invoice_number', 'N/A')}")
-    st.write(f"**Invoice Date:** {invoice_details.get('invoice_date', 'N/A')}")
-    st.write(f"**Total Amount:** {invoice_details.get('currency', '')} {invoice_details.get('total_amount', 'N/A')}")
-    
-    if invoice_details.get('vendor_info'):
-        st.write(f"**Vendor:** {invoice_details['vendor_info'].get('name', 'N/A')}")
-    if invoice_details.get('customer_info'):
-        st.write(f"**Customer:** {invoice_details['customer_info'].get('name', 'N/A')}")
-
-    if invoice_details.get('items'):
-        st.subheader("Line Items:")
-        for item in invoice_details['items']:
-            st.write(f"- {item.get('description', 'N/A')}: Qty {item.get('quantity', 'N/A')} @ {item.get('unit_price', 'N/A')} = {item.get('line_total', 'N/A')}")
+    st.subheader("Sąskaitos santrauka:")
+    st.write(f"**Sąskaitos numeris:** {invoice_details.get('saskaitos_numeris', 'N/A')}")
+    st.write(f"**Data:** {invoice_details.get('data', 'N/A')}")
+    st.write(f"**Bendra suma:** {invoice_details.get('bendra_suma', 'N/A')}")
+    st.write(f"**PVM:** {invoice_details.get('pvm', 'N/A')}")
+    st.write(f"**Apmokėjimo būdas:** {invoice_details.get('apmokejimo_budas', 'N/A')}")
+    st.write(f"**Apmokėjimo terminas:** {invoice_details.get('apmokejimo_terminas', 'N/A')}")
+    if invoice_details.get('pardavejas'):
+        st.write(f"**Pardavėjas:** {invoice_details['pardavejas'].get('name', 'N/A')}")
+    if invoice_details.get('pirkejas'):
+        st.write(f"**Pirkėjas:** {invoice_details['pirkejas'].get('name', 'N/A')}")
+    if invoice_details.get('paslaugos'):
+        st.subheader("Paslaugos:")
+        for item in invoice_details['paslaugos']:
+            st.write(f"- {item.get('description', 'N/A')}: {item.get('quantity', 'N/A')} {item.get('unit', '')} x {item.get('price_per_unit', 'N/A')} = {item.get('total', 'N/A')}")
 
 def print_invoice_json(invoice_details):
     """
     Print the extracted invoice JSON to console for debugging.
     """
     print("Extracted Invoice JSON:")
-    print(json.dumps(invoice_details, indent=2)) 
+    print(json.dumps(invoice_details, indent=2))
